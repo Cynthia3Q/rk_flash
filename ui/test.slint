@@ -1,0 +1,30 @@
+// Copyright © SixtyFPS GmbH <info@slint.dev>
+// SPDX-License-Identifier: MIT
+
+import { CheckBox, StandardListView, StyleMetrics } from "std-widgets.slint";
+import { AboutPage, ControlsPage, SettingsPage, BoardPage, FunctionsPage, FunctionsPageAdapter, OtherPage } from "pages/pages.slint";
+import { TestSettings } from "test_settings.slint";
+import { SideBar } from "side_bar.slint";
+
+export { FunctionsPageAdapter }
+
+component App inherits Window {
+    preferred-width: 700px;
+    preferred-height: 500px;
+    title: @tr("Test App Based on Slint");
+    icon: @image-url("logo/slint-logo-small-light.png");
+
+    HorizontalLayout {
+        side-bar := SideBar {
+            title: @tr("BOARD TEST MENU");
+            model: [@tr("Menu" => "Controls"), @tr("Menu" => "Board"), @tr("Menu" => "Functions"), @tr("Menu" => "Other"), @tr("Menu" => "Settings"), @tr("Menu" => "About")];
+        }
+
+        if(side-bar.current-item == 0) : ControlsPage {}
+        if(side-bar.current-item == 1) : BoardPage {}
+        if(side-bar.current-item == 2) : FunctionsPage {}
+        if(side-bar.current-item == 3) : OtherPage {}
+        if(side-bar.current-item == 4) : SettingsPage {}
+        if(side-bar.current-item == 5) : AboutPage {}
+    }
+}
