@@ -1,7 +1,7 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import { HorizontalBox, VerticalBox, StandardTableView, GroupBox} from "std-widgets.slint";
+import { HorizontalBox, VerticalBox, StandardTableView, GroupBox, GridBox, Spinner,CheckBox,ProgressIndicator} from "std-widgets.slint";
 import { TestSettings } from "../test_settings.slint";
 import { Page } from "page.slint";
 
@@ -14,40 +14,66 @@ export global FunctionsPageAdapter  {
         [ { text: "Item 5.1" }, { text: "Item 5.2" }, { text: "Item 5.3" }, { text: "Item 5.4" }, ],
         [ { text: "Item 6.1" }, { text: "Item 6.2" }, { text: "Item 6.3" }, { text: "Item 6.4" }, ],
     ];
+    in property <[string]> function_title: ["ALS","I2C","ALM","TIM","ACT","TMP","SER","TTI"];
 
     callback sort_ascending(int);
     callback sort_descending(int);
 }
+
 
 export component FunctionsPage inherits Page {
     title: @tr("Functions");
     show-enable-switch: false;
     description: @tr("StandardTableView can be used to display a list of text elements in columns and rows. It can be imported from \"std-widgets.slint\"");
 
-    HorizontalBox {
-        vertical-stretch: 1;
 
-        GroupBox {
-            title: @tr("StandardTableView");
+    VerticalBox {
+        alignment: start;
+
+        HorizontalBox {
+            vertical-stretch: 1;
+            alignment: space-between;
+            GroupBox {
+                title: @tr("Fuctions");
+                vertical-stretch: 0;
+            }
+            GroupBox {
+                title: @tr("Progress");
+                vertical-stretch: 0;
+            }
+            GroupBox {
+                title: @tr("Result");
+                vertical-stretch: 0;
+            }
+        }
+        
+        for func in FunctionsPageAdapter.function_title :GroupBox {
+            //title: @tr("");
             vertical-stretch: 0;
 
-            StandardTableView {
-                sort-ascending(index) => {
-                    FunctionsPageAdapter.sort_ascending(index);
+            HorizontalBox {
+                //spacing: 8px;
+                CheckBox {
+                    text: func;
+                    checked <=> i-progress-indicator.indeterminate;
                 }
 
-                sort-descending(index) => {
-                    FunctionsPageAdapter.sort-descending(index);
+                i-progress-indicator := ProgressIndicator {
+                    min-width: 160px;
+                    progress: 0.01;
+                    indeterminate: false;
                 }
-
-                columns: [
-                    { title: @tr("Header 1") },
-                    { title: @tr("Header 2") },
-                    { title: @tr("Header 3") },
-                    { title: @tr("Header 4") },
-                ];
-                rows: FunctionsPageAdapter.row_data;
+    
+                Rectangle {
+                    Spinner {
+                        progress: i-progress-indicator.progress;
+                        indeterminate: i-progress-indicator.indeterminate;
+                    }
+                }
+                Rectangle {
+                }
             }
+
         }
     }
 }

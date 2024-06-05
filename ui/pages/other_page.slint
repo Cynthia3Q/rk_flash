@@ -1,7 +1,7 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import { VerticalBox, GroupBox, TextEdit ,LineEdit,HorizontalBox,ComboBox} from "std-widgets.slint";
+import { VerticalBox, GroupBox, TextEdit ,LineEdit,HorizontalBox,ComboBox,StandardButton,Button} from "std-widgets.slint";
 import { TestSettings } from "../test_settings.slint";
 import { Page } from "page.slint";
 
@@ -10,13 +10,22 @@ export component OtherPage inherits Page {
     description: @tr("None");
 
     VerticalBox {//纵向容器
+        alignment: start;
+
         GroupBox {
             title: @tr("ip address");
 
             ip := LineEdit {
                 // min-width: 200px;
+                placeholder-text: @tr("ip address sample :192.168.126.168");
                 text: @tr("192.168.126.168");
                 enabled: TestSettings.widgets-enabled;
+                accepted => {
+
+                }
+
+                edited => {
+                }
             }
         }
     
@@ -28,6 +37,13 @@ export component OtherPage inherits Page {
                     // min-width: 200px;
                     text: @tr("root");
                     enabled: TestSettings.widgets-enabled;
+                    placeholder-text: @tr("sample :root");
+                    accepted => {
+
+                    }
+    
+                    edited => {
+                    }
                 }
             }
 
@@ -37,29 +53,54 @@ export component OtherPage inherits Page {
                 password := LineEdit {
                     // min-width: 200px;
                     text: @tr("root");
-                    enabled: TestSettings.widgets-enabled;}
+                    input-type: InputType.password;
+                    enabled: TestSettings.widgets-enabled;
+                    accepted => {
+
+                    }
+    
+                    edited => {
+                    }
+                }
+                    
             }
         }
+
 
         HorizontalBox { //横向容器
             GroupBox {
                 title: @tr("board type");
 
-              ComboBox {
-                model: [@tr("Select board"), @tr("dc11scu"), @tr("dc11p422"),@tr("dc11p514"),@tr("dc12p514"),@tr("dc11p524"),@tr("dc11p616"),@tr("dc11p626")];
-                enabled: TestSettings.widgets-enabled;
+                ComboBox {
+                    model: [@tr("Select board"), @tr("dc11scu"), @tr("dc11p422"),@tr("dc11p514"),@tr("dc12p514"),@tr("dc11p524"),@tr("dc11p616"),@tr("dc11p626")];
+                    enabled: TestSettings.widgets-enabled;
+                    selected => {
+                        self.current-value
+                    }
+                }
             }
-            }
+            
             GroupBox {
                 title: @tr("slot");
 
                 slot := ComboBox {
                     model: [@tr("Select slot"), @tr("1"), @tr("2"),@tr("3"),@tr("4"),@tr("5"),@tr("6"),@tr("7"),@tr("8"),@tr("9")];
                     enabled: TestSettings.widgets-enabled;
+                    selected => {
+                        self.current-value
+                    }
                 }
             }
         }
 
-        
+        save := StandardButton{
+            kind:apply;
+            enabled: TestSettings.widgets-enabled;
+            clicked() => {
+                self.pressed
+            }
+        }
+
     }
 }
+
