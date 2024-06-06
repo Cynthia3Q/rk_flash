@@ -2,7 +2,6 @@
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
-
 slint::include_modules!();
 
 use std::{ops::ControlFlow, rc::Rc};
@@ -35,10 +34,9 @@ pub fn main() -> Result<(), slint::PlatformError> {
             );
         }
     });
-
     app.run()
 }
 
-fn session_initialize() -> Result<()> {
+fn session_initialize() -> Result<(), ()> {
     Ok(())
 }
