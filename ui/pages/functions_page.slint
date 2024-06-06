@@ -18,6 +18,7 @@ export global FunctionsPageAdapter  {
 
     callback sort_ascending(int);
     callback sort_descending(int);
+    callback function_test_start(string);
 }
 
 
@@ -25,8 +26,7 @@ export component FunctionsPage inherits Page {
     title: @tr("Functions");
     show-enable-switch: false;
     description: @tr("StandardTableView can be used to display a list of text elements in columns and rows. It can be imported from \"std-widgets.slint\"");
-
-
+    in property <int> index : 0;
     VerticalBox {
         alignment: start;
 
@@ -46,34 +46,34 @@ export component FunctionsPage inherits Page {
                 vertical-stretch: 0;
             }
         }
-        
-        for func in FunctionsPageAdapter.function_title :GroupBox {
-            //title: @tr("");
-            vertical-stretch: 0;
 
-            HorizontalBox {
-                //spacing: 8px;
-                CheckBox {
-                    text: func;
-                    checked <=> i-progress-indicator.indeterminate;
-                }
+        //title: @tr("");
+        //vertical-stretch: 0;
+        //for func in FunctionsPageAdapter.function_title :GridBox{
 
-                i-progress-indicator := ProgressIndicator {
-                    min-width: 160px;
-                    progress: 0.01;
-                    indeterminate: false;
-                }
-    
-                Rectangle {
-                    Spinner {
-                        progress: i-progress-indicator.progress;
-                        indeterminate: i-progress-indicator.indeterminate;
+ 
+        for func in FunctionsPageAdapter.function_title: GroupBox {
+            CheckBox {
+                preferred-height: 8px;
+                text: func;
+                checked :false;
+                toggled => {
+                    if(self.checked)
+                    {
+                        FunctionsPageAdapter.function_test_start(func);
+                    }else{
+                        //FunctionsPageAdapter.function_test_stop(func);
                     }
-                }
+            }
                 Rectangle {
+                cir_progress := Spinner {
+                    progress: 0;
+                    indeterminate: true;
                 }
             }
-
+        Rectangle {}
         }
+        
+        
     }
 }

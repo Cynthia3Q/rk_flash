@@ -1,106 +1,216 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import { VerticalBox, GroupBox, TextEdit ,LineEdit,HorizontalBox,ComboBox,StandardButton,Button} from "std-widgets.slint";
+import { Button, GroupBox, SpinBox, ComboBox, CheckBox, LineEdit, TabWidget, VerticalBox, HorizontalBox,
+    Slider, ProgressIndicator, SpinBox, Switch, Spinner, GridBox } from "std-widgets.slint";
 import { TestSettings } from "../test_settings.slint";
 import { Page } from "page.slint";
 
 export component OtherPage inherits Page {
     title: @tr("Other");
-    description: @tr("None");
+    description: @tr("This page gives an overview of the default widget set provided by Slint. The widgets are available in different styles native, fluent-(dark/light) and material-(dark/light). The widgets can be imported from \"std-widgets.slint\".");
 
-    VerticalBox {//纵向容器
-        alignment: start;
+    GroupBox {
+        vertical-stretch: 0;
+        title: @tr("Buttons");
 
-        GroupBox {
-            title: @tr("ip address");
+        VerticalLayout {
+            padding: 0px;
 
-            ip := LineEdit {
-                // min-width: 200px;
-                placeholder-text: @tr("ip address sample :192.168.126.168");
-                text: @tr("192.168.126.168");
-                enabled: TestSettings.widgets-enabled;
-                accepted => {
+            HorizontalBox {
+                alignment: start;
 
+                Button {
+                    text: @tr("Regular Button");
+                    enabled: TestSettings.widgets-enabled;
                 }
 
-                edited => {
+                Button {
+                    text: @tr("Primary Button with Icon");
+                    //icon: @image-url("../../thumbsup.png");
+                    enabled: TestSettings.widgets-enabled;
+                    primary: true;
+                }
+
+                Button {
+                    //icon: @image-url("../../thumbsup.png");
+                    enabled: TestSettings.widgets-enabled;
+                    primary: true;
+                }
+
+                Button {
+                    checkable: true;
+                    text: self.checked ? @tr("ON") : @tr("OFF");
+                    enabled: TestSettings.widgets-enabled;
+                }
+            }
+
+            HorizontalBox {
+                alignment: start;
+
+                Button {
+                    text: @tr("Primary Button with colorized icon");
+                    //icon: @image-url("../../thumbsup.png");
+                    enabled: TestSettings.widgets-enabled;
+                    colorize-icon: true;
+                    primary: true;
                 }
             }
         }
-    
+    }
+
+    GroupBox {
+        title: @tr("CheckBox - ComboBox - Switch");
+        vertical-stretch: 0;
+
         HorizontalBox {
-            GroupBox {
-                title: @tr("username");
+            alignment: start;
+            padding: 0px;
 
-                username := LineEdit {
-                    // min-width: 200px;
-                    text: @tr("root");
-                    enabled: TestSettings.widgets-enabled;
-                    placeholder-text: @tr("sample :root");
-                    accepted => {
-
-                    }
-    
-                    edited => {
-                    }
-                }
+            checkbox := CheckBox {
+                text: checkbox.checked ? @tr("(checked)") : @tr("(unchecked)");
+                checked: true;
+                enabled: TestSettings.widgets-enabled;
             }
 
-            GroupBox {
-                title: @tr("password");
+            ComboBox {
+                model: [@tr("Select Something"), @tr("From this"), @tr("Combobox")];
+                enabled: TestSettings.widgets-enabled;
+            }
 
-                password := LineEdit {
-                    // min-width: 200px;
-                    text: @tr("root");
-                    input-type: InputType.password;
-                    enabled: TestSettings.widgets-enabled;
-                    accepted => {
-
-                    }
-    
-                    edited => {
-                    }
-                }
-                    
+            Switch {
+                text: @tr("Flight Mode");
+                checked: true;
+                enabled: TestSettings.widgets-enabled;
             }
         }
+    }
 
+    GroupBox {
+        title: @tr("LineEdit - SpinBox");
+        vertical-stretch: 0;
 
-        HorizontalBox { //横向容器
-            GroupBox {
-                title: @tr("board type");
+        HorizontalBox {
+            alignment: start;
+            padding: 0px;
 
-                ComboBox {
-                    model: [@tr("Select board"), @tr("dc11scu"), @tr("dc11p422"),@tr("dc11p514"),@tr("dc12p514"),@tr("dc11p524"),@tr("dc11p616"),@tr("dc11p626")];
-                    enabled: TestSettings.widgets-enabled;
-                    selected => {
-                        self.current-value
-                    }
-                }
+            LineEdit {
+                placeholder-text: @tr("Enter some text");
+                enabled: TestSettings.widgets-enabled;
             }
-            
-            GroupBox {
-                title: @tr("slot");
 
-                slot := ComboBox {
-                    model: [@tr("Select slot"), @tr("1"), @tr("2"),@tr("3"),@tr("4"),@tr("5"),@tr("6"),@tr("7"),@tr("8"),@tr("9")];
-                    enabled: TestSettings.widgets-enabled;
-                    selected => {
-                        self.current-value
-                    }
-                }
+            SpinBox {
+                vertical-stretch: 0;
+                value: 42;
+                enabled: TestSettings.widgets-enabled;
             }
         }
+    }
 
-        save := StandardButton{
-            kind:apply;
+    GroupBox {
+        title: @tr("Slider");
+        vertical-stretch: 0;
+
+        i-slider := Slider {
+            min-width: 160px;
+            minimum: -100;
+            maximum: 100;
+            value: 42;
             enabled: TestSettings.widgets-enabled;
-            clicked() => {
-                self.pressed
+        }
+    }
+
+    GroupBox {
+        title: @tr("ProgressIndicator | Spinner");
+        vertical-stretch: 0;
+
+        GridBox {
+            spacing: 16px;
+
+            i-progress-indicator := ProgressIndicator {
+                row: 0;
+                col: 0;
+                rowspan: 1;
+                min-width: 160px;
+                progress: (i-slider.value - i-slider.minimum) / (i-slider.maximum - i-slider.minimum);
+                indeterminate: true;
+            }
+
+            Rectangle {
+                row: 0;
+                col: 1;
+                rowspan: 2;
+                Spinner {
+                    progress: i-progress-indicator.progress;
+                    indeterminate: i-progress-indicator.indeterminate;
+                }
+            }
+
+            CheckBox {
+                row: 1;
+                col: 0;
+                rowspan: 1;
+                text: @tr("indeterminate");
+                checked <=> i-progress-indicator.indeterminate;
             }
         }
+    }
 
+    GroupBox {
+        title: @tr("TabWidget");
+
+        TabWidget {
+            Tab {
+                title: @tr("Tab 1");
+
+                VerticalBox {
+                    alignment: start;
+
+                    GroupBox {
+                        title: @tr("Content of tab 1");
+
+                        HorizontalBox {
+                            alignment: start;
+
+                            Button {
+                                text: @tr("Click me");
+                                enabled: TestSettings.widgets-enabled;
+                            }
+                        }
+                    }
+                }
+            }
+
+            Tab {
+                title: @tr("Tab 2");
+
+                VerticalBox {
+                    alignment: start;
+
+                    GroupBox {
+                        title: @tr("Content of tab 2");
+
+                        VerticalBox {
+                            alignment: start;
+
+                            CheckBox {
+                                text: @tr("Check me");
+                                enabled: TestSettings.widgets-enabled;
+                            }
+                        }
+                    }
+                }
+            }
+
+            Tab {
+                title: @tr("Tab 3");
+
+                VerticalBox {
+                    Text {
+                        text: @tr("Content of tab 3");
+                    }
+                }
+            }
+        }
     }
 }
-
