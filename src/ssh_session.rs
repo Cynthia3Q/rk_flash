@@ -2,7 +2,7 @@ use ssh2::Session;
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 
-pub fn connect_ssh(ip: String, port: u16, user: String, passwd: String) -> std::io::Result<()> {
+pub fn connect_ssh(ip: &String, port: u16, user: &String, passwd: &String) -> std::io::Result<()> {
     let tcp = TcpStream::connect(format!("{}:{}", ip, port)).unwrap();
 
     let mut sess = Session::new().unwrap();
@@ -25,19 +25,29 @@ pub fn connect_ssh(ip: String, port: u16, user: String, passwd: String) -> std::
 }
 
 #[allow(dead_code)]
-fn connect_via_telnet(
+fn connect_via_ssh(
     address: String,
     port: String,
+    username: String,
+    password: String,
     command: String,
 ) -> impl std::future::Future<Output = String> {
     async move {
-        let mut telnet =
-            Telnet::connect((address.as_str(), port.parse::<u16>().unwrap()), 256).unwrap();
-        telnet.write(command.as_bytes()).unwrap();
-        let event = telnet.read().unwrap();
-        match event {
-            telnet::Event::Data(buffer) => String::from_utf8_lossy(&buffer).into_owned(),
-            _ => "Failed to receive response".into(),
+        let tcp = TcpStream::connect(format!("{}:{}", address, port)).unwrap();
+        let mut session = Session::new().unwrap();
+        session.set_tcp_stream(tcp);
+        session.handshake().unwrap();
+        session.userauth_password(&username, &password).unwrap();
+
+        if session.authenticated() {
+            let mut channel = session.channel_session().unwrap();
+            channel.exec(&command).unwrap();
+            let mut s = String::new();
+            channel.read_to_string(&mut s).unwrap();
+            channel.wait_close().unwrap();
+            s
+        } else {
+            "Authentication failed".into()
         }
     }
 }

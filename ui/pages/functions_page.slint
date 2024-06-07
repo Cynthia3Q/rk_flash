@@ -1,7 +1,7 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import { HorizontalBox, VerticalBox, StandardTableView, GroupBox, GridBox, Spinner,CheckBox,ProgressIndicator} from "std-widgets.slint";
+import { Button,HorizontalBox, VerticalBox, StandardTableView, GroupBox, GridBox, Spinner,CheckBox,ProgressIndicator, StandardButton} from "std-widgets.slint";
 import { TestSettings } from "../test_settings.slint";
 import { Page } from "page.slint";
 
@@ -18,7 +18,7 @@ export global FunctionsPageAdapter  {
 
     callback sort_ascending(int);
     callback sort_descending(int);
-    callback function_test_start(string);
+    callback function_test_start();
 }
 
 
@@ -45,6 +45,17 @@ export component FunctionsPage inherits Page {
                 title: @tr("Result");
                 vertical-stretch: 0;
             }
+            start_button := Button {
+                    checkable: true;
+                    text: !self.checked ? @tr("Start") : @tr("Stop");
+                    //enabled: TestSettings.widgets-enabled;
+                clicked => {
+                    if (self.checked)
+                    {
+                        FunctionsPageAdapter.function_test_start();
+                    }
+                }
+            }
         }
 
         //title: @tr("");
@@ -53,14 +64,14 @@ export component FunctionsPage inherits Page {
 
  
         for func in FunctionsPageAdapter.function_title: GroupBox {
-            CheckBox {
+            check_button := CheckBox {
                 preferred-height: 8px;
                 text: func;
-                checked :false;
+                checked :true;
                 toggled => {
                     if(self.checked)
                     {
-                        FunctionsPageAdapter.function_test_start(func);
+                        //FunctionsPageAdapter.function_test_start();
                     }else{
                         //FunctionsPageAdapter.function_test_stop(func);
                     }
@@ -69,7 +80,7 @@ export component FunctionsPage inherits Page {
                 Rectangle {
                 cir_progress := Spinner {
                     progress: 0;
-                    indeterminate: true;
+                    indeterminate: start_button.checked && check_button.checked;
                 }
             }
         Rectangle {}

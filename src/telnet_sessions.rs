@@ -5,12 +5,12 @@ use std::time::Duration;
 use telnet::{Event, Telnet};
 use tokio::task;
 
-pub async fn connect_telnet(
+pub fn connect_telnet(
     ip: String,
     port: u16,
     user: String,
     passwd: String,
-) -> tokio::io::Result<Telnet> {
+) -> tokio::io::Result<()> {
     let date = Local::now();
     let filename = format!("log_{}.txt", date.format("%Y_%m_%d"));
     let mut log_file = OpenOptions::new()
@@ -68,7 +68,6 @@ pub async fn connect_telnet(
         return telnet_stream;
     });
     println!("1111\n");
-    let telnet_stream = handle.await.unwrap();
 
     println!("22222\n");
     /*
@@ -78,33 +77,23 @@ pub async fn connect_telnet(
             //处理收到的数据
         }
     });*/
-    Ok(telnet_stream)
+    Ok(())
 }
 
 #[allow(dead_code)]
-fn connect_via_ssh(
+fn connect_via_telnet(
     address: String,
     port: String,
-    username: String,
-    password: String,
     command: String,
 ) -> impl std::future::Future<Output = String> {
     async move {
-        let tcp = TcpStream::connect(format!("{}:{}", address, port)).unwrap();
-        let mut session = Session::new().unwrap();
-        session.set_tcp_stream(tcp);
-        session.handshake().unwrap();
-        session.userauth_password(&username, &password).unwrap();
-
-        if session.authenticated() {
-            let mut channel = session.channel_session().unwrap();
-            channel.exec(&command).unwrap();
-            let mut s = String::new();
-            channel.read_to_string(&mut s).unwrap();
-            channel.wait_close().unwrap();
-            s
-        } else {
-            "Authentication failed".into()
+        let mut telnet =
+            Telnet::connect((address.as_str(), port.parse::<u16>().unwrap()), 256).unwrap();
+        telnet.write(command.as_bytes()).unwrap();
+        let event = telnet.read().unwrap();
+        match event {
+            telnet::Event::Data(buffer) => String::from_utf8_lossy(&buffer).into_owned(),
+            _ => "Failed to receive response".into(),
         }
     }
 }

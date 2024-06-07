@@ -14,13 +14,17 @@ struct ssh_info {
     slot: string 
 }
 export global ControlsPageAdapter {
+    in-out property <ssh_info> connection; 
     callback connection_apply(ssh_info);
+    pure public function get_connect()-> ssh_info {
+        self.connection
+      }
+
 }
 
 export component ControlsPage inherits Page {
     title: @tr("Controls");
     description: @tr("None");
-    in-out property <ssh_info> connection; 
 
     VerticalBox {//纵向容器
         alignment: start;
@@ -34,7 +38,7 @@ export component ControlsPage inherits Page {
                 text: @tr("192.168.126.168");
                 enabled: TestSettings.widgets-enabled;
                 accepted() => {
-                    connection.ip = self.text;
+                    ControlsPageAdapter.connection.ip = self.text;
                 }
                 edited => {save.enabled = true;}
             }
@@ -50,7 +54,7 @@ export component ControlsPage inherits Page {
                     enabled: TestSettings.widgets-enabled;
                     placeholder-text: @tr("sample :root");
                     accepted => {
-                        connection.username = self.text;
+                        ControlsPageAdapter.connection.username = self.text;
                     }
     
                     edited => {
@@ -68,7 +72,7 @@ export component ControlsPage inherits Page {
                     input-type: InputType.password;
                     enabled: TestSettings.widgets-enabled;
                     accepted => {
-                        connection.password = self.text;
+                        ControlsPageAdapter.connection.password = self.text;
                     }
     
                     edited => {
@@ -88,7 +92,7 @@ export component ControlsPage inherits Page {
                     model: [@tr("Select board"), @tr("dc11scu"), @tr("dc11p422"),@tr("dc11p514"),@tr("dc12p514"),@tr("dc11p524"),@tr("dc11p616"),@tr("dc11p626")];
                     enabled: TestSettings.widgets-enabled;
                     selected => {
-                        connection.board-type = self.current-value;
+                        ControlsPageAdapter.connection.board-type = self.current-value;
                         save.enabled = true;
                     }
                 }
@@ -101,7 +105,7 @@ export component ControlsPage inherits Page {
                     model: [@tr("Select slot"), @tr("1"), @tr("2"),@tr("3"),@tr("4"),@tr("5"),@tr("6"),@tr("7"),@tr("8"),@tr("9")];
                     enabled: TestSettings.widgets-enabled;
                     selected => {
-                        connection.slot = self.current-value;
+                        ControlsPageAdapter.connection.slot = self.current-value;
                         save.enabled = true;
                     }
                 }
@@ -115,12 +119,12 @@ export component ControlsPage inherits Page {
                 if board-type.current-index == 0 || slot.current-index == 0 {
                     return;
                 }
-                connection.ip = ip.text;
-                connection.username = username.text;
-                connection.password = password.text;
-                connection.board-type = board-type.current-value;
-                connection.slot = slot.current-value;
-                ControlsPageAdapter.connection_apply(connection);
+                ControlsPageAdapter.connection.ip = ip.text;
+                ControlsPageAdapter.connection.username = username.text;
+                ControlsPageAdapter.connection.password = password.text;
+                ControlsPageAdapter.connection.board-type = board-type.current-value;
+                ControlsPageAdapter.connection.slot = slot.current-value;
+                ControlsPageAdapter.connection_apply(ControlsPageAdapter.connection);
                 self.enabled = false;
             }
         }
