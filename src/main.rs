@@ -33,7 +33,8 @@ use std::{ops::ControlFlow, rc::Rc};
 use slint::{Model, StandardListViewItem, VecModel};
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
-pub fn main() -> Result<(), slint::PlatformError> {
+#[tokio::main]
+pub async fn main() -> Result<(), slint::PlatformError> {
     // This provides better error messages in debug mode.
     // It's disabled in release mode so it doesn't bloat up the file size.
     #[cfg(all(debug_assertions, target_arch = "wasm32"))]
@@ -67,8 +68,7 @@ pub fn main() -> Result<(), slint::PlatformError> {
                 let app = app_weak.upgrade().unwrap();
                 let connection: SshInfo =
                     app.global::<ControlsPageAdapter>().get_connection().into();
-
-                session_initialize(connection);
+                tokio::spawn(session_initialize(connection));
             }
         });
 
@@ -78,7 +78,7 @@ pub fn main() -> Result<(), slint::PlatformError> {
     app.run()
 }
 
-async fn session_initialize(connection: SshInfo) -> Result<(), ()> {
+async fn session_initialize(connection: SshInfo) -> tokio::io::Result<()> {
     ssh_session::connect_ssh(
         &connection.ip,
         22,
