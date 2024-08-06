@@ -1,5 +1,5 @@
 [package]
-name = "test_gui"
+name = "rk_flash"
 version = "1.6.0"
 authors = ["Slint Developers <info@slint.dev>"]
 edition = "2021"
@@ -10,7 +10,7 @@ description = "Testing GUI software"
 
 [[bin]]
 path = "src/main.rs"
-name = "test_gui"
+name = "rk_flash"
 
 [dependencies]
 ssh2 = "0.9.1"
@@ -19,6 +19,7 @@ chrono = "0.4.0"
 rand = "0.8"
 slint = "1.6"
 tokio = { version = "1.0", features = ["full"] }
+libc = "0.2"
 
 # Disable gettext on macOS due to https://github.com/Koka/gettext-rs/issues/114
 

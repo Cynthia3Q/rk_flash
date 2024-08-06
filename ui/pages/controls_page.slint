@@ -5,27 +5,32 @@ import { VerticalBox, GroupBox, TextEdit ,LineEdit,HorizontalBox,ComboBox,Standa
 import { TestSettings } from "../test_settings.slint";
 import { Page } from "page.slint";
 
-
-struct ssh_info {
-    ip: string,
-    username: string,
-    password: string,
-    board_type: string,
-    slot: string 
+struct device_info {
+    checked: bool,
+    description: string
 }
-export global ControlsPageAdapter {
-    in-out property <ssh_info> connection : {
-        ip :"192.168.126.124",
-        username :"root",
-        password :"root",
-        board_type :"dc11scu",
-        slot: "1"
-    };
-    callback connection_apply(ssh_info);
-    pure public function get_connect()-> ssh_info {
-        self.connection
-      }
 
+struct flash_info {
+    board_type: string,
+    version_list: [string],
+    version_selected:string,
+    devices: [device_info],
+}
+
+
+export global ControlsPageAdapter {
+    in-out property <flash_info> flash : {
+        board_type :"dc11p626",
+        version_list:[ "Select version",],
+        version_selected:"",
+        devices:[],
+    };
+    
+    callback flash_apply(flash_info);
+    callback flash_start();
+    pure public function get_connect()-> flash_info {
+        self.flash
+      }
 }
 
 export component ControlsPage inherits Page {
@@ -35,102 +40,86 @@ export component ControlsPage inherits Page {
     VerticalBox {//纵向容器
         alignment: start;
 
-        GroupBox {
-            title: @tr("ip address");
-
-            ip := LineEdit {
-                // min-width: 200px;
-                placeholder-text: @tr("ip address sample :192.168.126.168");
-                text : ControlsPageAdapter.connection.ip;
-                enabled: TestSettings.widgets-enabled;
-                accepted() => {
-                    ControlsPageAdapter.connection.ip = self.text;
-                }
-                edited => {save.enabled = true;}
-            }
-        }
-    
-        HorizontalBox {
-            GroupBox {
-                title: @tr("username");
-
-                username := LineEdit {
-                    // min-width: 200px;
-                    text: ControlsPageAdapter.connection.username;
-                    enabled: TestSettings.widgets-enabled;
-                    placeholder-text: @tr("sample :root");
-                    accepted => {
-                        ControlsPageAdapter.connection.username = self.text;
-                    }
-    
-                    edited => {
-                        save.enabled = true;
-                    }
-                }
-            }
-
-            GroupBox {
-                title: @tr("password");
-
-                password := LineEdit {
-                    // min-width: 200px;
-                    text: ControlsPageAdapter.connection.password;
-                    input-type: InputType.password;
-                    enabled: TestSettings.widgets-enabled;
-                    accepted => {
-                        ControlsPageAdapter.connection.password = self.text;
-                    }
-    
-                    edited => {
-                        save.enabled = true;
-                    }
-                }
-                    
-            }
-        }
-
 
         HorizontalBox { //横向容器
             GroupBox {
                 title: @tr("board type");
 
                 board-type := ComboBox {
-                    model: [@tr("Select board"), @tr("dc11scu"), @tr("dc11p422"),@tr("dc11p514"),@tr("dc12p514"),@tr("dc11p524"),@tr("dc11p616"),@tr("dc11p626")];
+                    model: [@tr("Select board"), @tr("dc11p626")];
                     enabled: TestSettings.widgets-enabled;
-                    current-value: ControlsPageAdapter.connection.board-type;
+                    current-value: ControlsPageAdapter.flash.board-type;
                     selected => {
-                        ControlsPageAdapter.connection.board-type = self.current-value;
+                        ControlsPageAdapter.flash.board-type = self.current-value;
                         save.enabled = true;
                     }
                 }
             }
             
             GroupBox {
-                title: @tr("slot");
+                title: @tr("version");
 
-                slot := ComboBox {
-                    model: [@tr("Select slot"), @tr("1"), @tr("2"),@tr("3"),@tr("4"),@tr("5"),@tr("6"),@tr("7"),@tr("8"),@tr("9")];
+                version := ComboBox {
+                    model: ControlsPageAdapter.flash.version_list;
                     enabled: TestSettings.widgets-enabled;
-                    current-value: ControlsPageAdapter.connection.slot;
+                    current-value: ControlsPageAdapter.flash.version_selected;
                     selected => {
-                        ControlsPageAdapter.connection.slot = self.current-value;
+                        ControlsPageAdapter.flash.version_selected = self.current-value;
                         save.enabled = true;
                     }
                 }
             }
         }
 
-        save := StandardButton{
-            kind:apply;
-            //enabled: TestSettings.widgets-enabled;
-            clicked() => {
-                ControlsPageAdapter.connection.ip = ip.text;
-                ControlsPageAdapter.connection.username = username.text;
-                ControlsPageAdapter.connection.password = password.text;
-                ControlsPageAdapter.connection.board-type = board-type.current-value;
-                ControlsPageAdapter.connection.slot = slot.current-value;
-                ControlsPageAdapter.connection_apply(ControlsPageAdapter.connection);
-                self.enabled = false;
+        HorizontalBox { //横向容器
+            vertical-stretch: 1;
+            alignment: space-between;
+
+            save := StandardButton{
+                kind:apply;
+                //enabled: TestSettings.widgets-enabled;
+                clicked() => {
+                    ControlsPageAdapter.flash.board-type = board-type.current-value;
+                    ControlsPageAdapter.flash.version-selected = version.current-value;
+                    ControlsPageAdapter.flash_apply(ControlsPageAdapter.flash);
+                    self.enabled = false;
+                }
+            }
+
+            start_button := Button {
+                checkable: true;
+                enabled: flash_info.devices.length > 0;
+                text: !self.checked ? @tr("Start") : @tr("Stop");
+                //enabled: TestSettings.widgets-enabled;
+                clicked => {
+                    if (self.checked)
+                    {
+                        ControlsPageAdapter.flash_start();
+                    }
+                }
+            }
+        }
+
+        Column {
+            Repeater {
+                for device in ControlsPageAdapter.flash.devices: {
+                    Row {
+                        CheckBox {
+                            checked: device.checked;
+                            clicked => {
+                                device.checked = self.checked;
+                            }
+                        }
+                        Text {
+                            text: device.description;
+                        }
+                    }
+                }
+            }
+            Text {
+                text: "No devices connected";
+                color: red;
+                visible: flash_info.devices.length == 0;
             }
         }
 
