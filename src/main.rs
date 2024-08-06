@@ -10,6 +10,22 @@ struct FlashInfo {
     board_type: String,
     version_list: Vec<String>,
     version_selected: String,
+    devices: Vec<DeviceInfo>,
+}
+
+#[derive(Default, Debug, Clone)]
+struct DeviceInfo {
+    checked: bool,
+    description: String,
+}
+
+impl From<device_info> for DeviceInfo {
+    fn from(device_info: device_info) -> Self {
+        Self {
+            checked: device_info.checked,
+            description: device_info.description.to_string(),
+        }
+    }
 }
 
 impl From<flash_info> for FlashInfo {
@@ -18,6 +34,7 @@ impl From<flash_info> for FlashInfo {
             board_type: flash_info.board_type.to_string(),
             version_list: vec![],
             version_selected: flash_info.version_selected.to_string(),
+            devices: vec![],
         };
 
         let versions = FlashInfo::load_versions();
@@ -51,7 +68,26 @@ impl FlashInfo {
         versions
     }
 
-    // Convert Vec<String> to ModelRc<SharedString>
+    fn update_device_list(&mut self) {
+        let output = Command::new("tools/rk_flash_tools/upgrade_tool")
+            .arg("LD")
+            .output()
+            .expect("Failed to execute upgrade_tool");
+
+        let output_str = String::from_utf8_lossy(&output.stdout);
+
+        let devices: Vec<DeviceInfo> = output_str
+            .lines()
+            .filter(|line| line.starts_with("DevNo="))
+            .enumerate()
+            .map(|(i, line)| DeviceInfo {
+                checked: i == 0,
+                description: line.to_string(),
+            })
+            .collect();
+
+        self.devices = devices;
+    }
     // Convert Vec<String> to ModelRc<SharedString>
     fn to_model_rc(&self) -> ModelRc<slint::SharedString> {
         let shared_strings: Vec<slint::SharedString> = self
@@ -61,6 +97,18 @@ impl FlashInfo {
             .collect();
         ModelRc::new(VecModel::from(shared_strings))
     }
+
+    fn devices_to_model_rc(&self) -> ModelRc<device_info> {
+        let device_infos: Vec<device_info> = self
+            .devices
+            .iter()
+            .map(|d| device_info {
+                checked: d.checked,
+                description: d.description.clone().into(),
+            })
+            .collect();
+        ModelRc::new(VecModel::from(device_infos))
+    }
 }
 
 use slint::{Model, StandardListViewItem, VecModel};
@@ -68,7 +116,11 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::process::{exit, Command};
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::{ops::ControlFlow, rc::Rc};
+
+use tokio::time::Duration;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 #[tokio::main]
@@ -106,13 +158,52 @@ pub async fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
+    // Initialize FlashInfo
     let flash_info = flash_info::default();
-    let flash_info_struct: FlashInfo = flash_info.into();
-    let model_rc = flash_info_struct.to_model_rc();
-    app.global::<ControlsPageAdapter>().set_flash(flash_info {
-        board_type: flash_info_struct.board_type.into(),
-        version_list: model_rc,
-        version_selected: flash_info_struct.version_selected.into(),
+    let mut flash_info_struct: FlashInfo = flash_info.into();
+
+    // Set the version list model for the ComboBox in Slint
+    //let model_rc = flash_info_struct.to_model_rc();
+    //let devices_rc: ModelRc<device_info> = flash_info_struct.devices_to_model_rc();
+
+    let flash_info_arc = Arc::new(Mutex::new(flash_info_struct));
+
+    let flash_info_arc_clone = Arc::clone(&flash_info_arc);
+
+    let app_weak = app.as_weak();
+
+    {
+        let flash_info_lock = flash_info_arc.lock().unwrap();
+        let model_rc = flash_info_lock.to_model_rc();
+        let devices_rc = flash_info_lock.devices_to_model_rc();
+
+        app.global::<ControlsPageAdapter>().set_flash(flash_info {
+            board_type: flash_info_lock.board_type.clone().into(),
+            version_list: model_rc,
+            version_selected: flash_info_lock.version_selected.clone().into(),
+            devices: devices_rc,
+        });
+    }
+    // Periodically update the device list
+    std::thread::spawn(move || loop {
+        {
+            let mut flash_info_lock = flash_info_arc_clone.lock().unwrap();
+            flash_info_lock.update_device_list();
+        }
+
+        if let Some(app) = app_weak.upgrade() {
+            let flash_info_lock = flash_info_arc_clone.lock().unwrap();
+            let devices_rc = flash_info_lock.devices_to_model_rc();
+
+            app.global::<ControlsPageAdapter>().set_flash(flash_info {
+                board_type: flash_info_lock.board_type.clone().into(),
+                version_list: flash_info_lock.to_model_rc(),
+                version_selected: flash_info_lock.version_selected.clone().into(),
+                devices: devices_rc,
+            });
+        }
+
+        std::thread::sleep(Duration::from_millis(500));
     });
 
     //let flash: FlashInfo = app.global::<ControlsPageAdapter>().get_flash().into();
@@ -158,6 +249,7 @@ async fn rk_flash_start(flash: FlashInfo) -> tokio::io::Result<()> {
     Ok(())
 }
 
+/*
 fn check_root() {
     if unsafe { libc::getuid() } != 0 {
         eprintln!("please run this script with root.");
@@ -165,6 +257,7 @@ fn check_root() {
         exit(1);
     }
 }
+*/
 
 // Function to run a command and handle errors
 fn run_command(command: &PathBuf, args: &[&str]) {

@@ -1,7 +1,7 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import { VerticalBox, GroupBox, TextEdit ,LineEdit,HorizontalBox,ComboBox,StandardButton,Button} from "std-widgets.slint";
+import { VerticalBox, GroupBox, TextEdit ,LineEdit,HorizontalBox,ComboBox,StandardButton,Button,CheckBox} from "std-widgets.slint";
 import { TestSettings } from "../test_settings.slint";
 import { Page } from "page.slint";
 
@@ -88,7 +88,7 @@ export component ControlsPage inherits Page {
 
             start_button := Button {
                 checkable: true;
-                enabled: flash_info.devices.length > 0;
+                enabled: ControlsPageAdapter.flash.devices.length > 0;
                 text: !self.checked ? @tr("Start") : @tr("Stop");
                 //enabled: TestSettings.widgets-enabled;
                 clicked => {
@@ -100,28 +100,28 @@ export component ControlsPage inherits Page {
             }
         }
 
-        Column {
-            Repeater {
-                for device in ControlsPageAdapter.flash.devices: {
-                    Row {
-                        CheckBox {
-                            checked: device.checked;
-                            clicked => {
-                                device.checked = self.checked;
-                            }
-                        }
-                        Text {
-                            text: device.description;
+        VerticalLayout {
+            for device in ControlsPageAdapter.flash.devices: 
+                HorizontalLayout {
+                    CheckBox {
+                        checked: device.checked;
+                        toggled => {
+                            device.checked = self.checked;
                         }
                     }
+                    Text {
+                        text: device.description;
                 }
-            }
-            Text {
-                text: "No devices connected";
-                color: red;
-                visible: flash_info.devices.length == 0;
+                
             }
         }
+
+        Text {
+            text: "No devices connected";
+            color: red;
+            visible: ControlsPageAdapter.flash.devices.length == 0;
+        }
+
 
     }
 }
