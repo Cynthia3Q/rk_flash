@@ -1,9 +1,24 @@
 //#![deny(unsafe_code)]
 
 use slint::ModelRc;
+use tokio::sync::watch::error;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 slint::include_modules!();
+
+use slint::{Model, StandardListViewItem, VecModel};
+use std::env;
+use std::fs;
+use std::path::PathBuf;
+use std::process::{exit, Command};
+use std::sync::Arc;
+use std::sync::Mutex;
+use tokio::time::Duration;
+mod flash;
+mod merge_filesystem;
+use regex::Regex;
+
+use flash::rk_flash_start;
 
 #[derive(Default, Debug, Clone)]
 struct FlashInfo {
@@ -16,14 +31,18 @@ struct FlashInfo {
 #[derive(Default, Debug, Clone)]
 struct DeviceInfo {
     checked: bool,
-    description: String,
+    dev_no: String,
+    mode: String,
+    serial_no: String,
 }
 
 impl From<device_info> for DeviceInfo {
     fn from(device_info: device_info) -> Self {
         Self {
             checked: device_info.checked,
-            description: device_info.description.to_string(),
+            dev_no: device_info.dev_no.to_string(),
+            mode: device_info.mode.to_string(),
+            serial_no: device_info.serial_no.to_string(),
         }
     }
 }
@@ -75,16 +94,19 @@ impl FlashInfo {
             .expect("Failed to execute upgrade_tool");
 
         let output_str = String::from_utf8_lossy(&output.stdout);
-
+        // println!("Command output:\n{}", output_str); // 打印命令输出
+        let mut description: String;
         let devices: Vec<DeviceInfo> = output_str
             .lines()
             .filter(|line| line.starts_with("DevNo="))
             .enumerate()
-            .map(|(i, line)| DeviceInfo {
-                checked: i == 0,
-                description: line.to_string(),
-            })
+            .filter_map(|(_, line)| parse_device_description(line))
             .collect();
+
+        //打印解析后的设备列表
+        for device in &devices {
+            println!("Parsed device: {:?}", device);
+        }
 
         self.devices = devices;
     }
@@ -104,28 +126,39 @@ impl FlashInfo {
             .iter()
             .map(|d| device_info {
                 checked: d.checked,
-                description: d.description.clone().into(),
+                dev_no: d.dev_no.clone().into(),
+                mode: d.mode.clone().into(),
+                serial_no: d.serial_no.clone().into(),
             })
             .collect();
         ModelRc::new(VecModel::from(device_infos))
     }
 }
 
-use slint::{Model, StandardListViewItem, VecModel};
-use std::env;
-use std::fs;
-use std::path::PathBuf;
-use std::process::{exit, Command};
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::{ops::ControlFlow, rc::Rc};
-
-use tokio::time::Duration;
+// 添加一个解析函数从字符串中提取字段
+fn parse_device_description(description: &str) -> Option<DeviceInfo> {
+    let re = Regex::new(r"DevNo=(\d+)\s+.*?Mode=(\w+)\s+.*?SerialNo=(\w+)").unwrap();
+    re.captures(description).map(|caps| {
+        DeviceInfo {
+            checked: true, // 默认值，根据需要设置
+            dev_no: caps
+                .get(1)
+                .map_or_else(|| "".to_string(), |m| m.as_str().to_string()),
+            mode: caps
+                .get(2)
+                .map_or_else(|| "".to_string(), |m| m.as_str().to_string()),
+            serial_no: caps
+                .get(3)
+                .map_or_else(|| "".to_string(), |m| m.as_str().to_string()),
+        }
+    })
+}
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 #[tokio::main]
 pub async fn main() -> Result<(), slint::PlatformError> {
-    //check_root();
+    #[cfg(target_os = "linux")]
+    check_root();
     // This provides better error messages in debug mode.
     // It's disabled in release mode so it doesn't bloat up the file size.
     #[cfg(all(debug_assertions, target_arch = "wasm32"))]
@@ -135,19 +168,16 @@ pub async fn main() -> Result<(), slint::PlatformError> {
     #[cfg(not(target_os = "macos"))]
     //slint::init_translations!(concat!(env!("CARGO_MANIFEST_DIR"), "/lang/"));
     let app = App::new().unwrap();
-
-    let common_dir = fs::canonicalize(format!("{}", env::current_dir().unwrap().display()))
-        .expect("Failed to get common directory");
-
-    let upgrade_dir = common_dir.join("upgrade");
-
+    /*
     let (tx, rx) = std::sync::mpsc::channel();
+
     app.global::<ControlsPageAdapter>().on_flash_apply({
         move |flash| {
             println!("{} {}", flash.board_type, flash.version_selected);
             tx.send(flash.clone()).unwrap();
         }
     });
+    */
 
     app.global::<ControlsPageAdapter>().on_flash_start({
         let app_weak = app.as_weak();
@@ -160,7 +190,7 @@ pub async fn main() -> Result<(), slint::PlatformError> {
 
     // Initialize FlashInfo
     let flash_info = flash_info::default();
-    let mut flash_info_struct: FlashInfo = flash_info.into();
+    let flash_info_struct: FlashInfo = flash_info.into();
 
     // Set the version list model for the ComboBox in Slint
     //let model_rc = flash_info_struct.to_model_rc();
@@ -169,8 +199,6 @@ pub async fn main() -> Result<(), slint::PlatformError> {
     let flash_info_arc = Arc::new(Mutex::new(flash_info_struct));
 
     let flash_info_arc_clone = Arc::clone(&flash_info_arc);
-
-    let app_weak = app.as_weak();
 
     {
         let flash_info_lock = flash_info_arc.lock().unwrap();
@@ -184,90 +212,52 @@ pub async fn main() -> Result<(), slint::PlatformError> {
             devices: devices_rc,
         });
     }
-    // Periodically update the device list
-    std::thread::spawn(move || loop {
-        {
+
+    app.global::<ControlsPageAdapter>().on_flash_apply({
+        let app_weak = app.as_weak();
+        move |a| {
+            let app = app_weak.upgrade().unwrap();
             let mut flash_info_lock = flash_info_arc_clone.lock().unwrap();
             flash_info_lock.update_device_list();
-        }
-
-        if let Some(app) = app_weak.upgrade() {
-            let flash_info_lock = flash_info_arc_clone.lock().unwrap();
-            let devices_rc = flash_info_lock.devices_to_model_rc();
+            print_flash_info(&flash_info_lock);
 
             app.global::<ControlsPageAdapter>().set_flash(flash_info {
                 board_type: flash_info_lock.board_type.clone().into(),
                 version_list: flash_info_lock.to_model_rc(),
                 version_selected: flash_info_lock.version_selected.clone().into(),
-                devices: devices_rc,
+                devices: flash_info_lock.devices_to_model_rc(),
             });
+        }
+    });
+
+    let app_weak = app.as_weak();
+    // Periodically update the device list
+    std::thread::spawn(move || loop {
+        {
+            //let mut flash_info_lock = flash_info_arc_clone.lock().unwrap();
+            //flash_info_lock.update_device_list();
+            //print_flash_info(&flash_info_lock);
         }
 
         std::thread::sleep(Duration::from_millis(500));
     });
-
-    //let flash: FlashInfo = app.global::<ControlsPageAdapter>().get_flash().into();
-    //let flash_info = rx.try_recv();
-    //session_initialize(flash_info);
+    // 启动事件循环
     app.run()
 }
 
-async fn rk_flash_start(flash: FlashInfo) -> tokio::io::Result<()> {
-    // Define the paths
-    let common_dir = fs::canonicalize(format!("{}", env::current_dir().unwrap().display()))
-        .expect("Failed to get common directory");
-
-    //let sdk_dir = fs::canonicalize(common_dir.join("..")).expect("Failed to get SDK directory");
-    let upgrade_tool = common_dir.join("tools/rk_flash_tools/upgrade_tool");
-    let rockdev_dir = common_dir.join("rockdev");
-
-    let loader = rockdev_dir.join("loader.bin");
-    let parameter = rockdev_dir.join("parameter.txt");
-    let uboot = rockdev_dir.join("uboot.img");
-    let boot = rockdev_dir.join("boot.img");
-    let rootfs = rockdev_dir.join("rootfs.img");
-
-    // Check the flash type argument
-    let flash_type = env::args().nth(1).unwrap_or_else(|| "all".to_string());
-
-    if flash_type == "all" {
-        // Ensure upgrade_tool exists and is executable
-        if !upgrade_tool.exists() {
-            eprintln!("{} not found.", upgrade_tool.display());
-            exit(1);
-        }
-
-        // Run the upgrade_tool commands
-        run_command(&upgrade_tool, &["ul", loader.to_str().unwrap(), "-noreset"]);
-        run_command(&upgrade_tool, &["di", "-p", parameter.to_str().unwrap()]);
-        run_command(&upgrade_tool, &["di", "-uboot", uboot.to_str().unwrap()]);
-        run_command(&upgrade_tool, &["di", "-b", boot.to_str().unwrap()]);
-        run_command(&upgrade_tool, &["di", "-rootfs", rootfs.to_str().unwrap()]);
-        run_command(&upgrade_tool, &["rd"]);
-    }
-
-    Ok(())
+fn print_flash_info(flash_info: &FlashInfo) {
+    dbg!("\n");
+    println!("Board Type: {:?}", flash_info.board_type);
+    println!("Version List: {:?}", flash_info.version_list);
+    println!("Version Selected: {:?}", flash_info.version_selected);
+    println!("Devices: {:?}", flash_info.devices);
 }
 
-/*
+#[cfg(target_os = "linux")]
 fn check_root() {
     if unsafe { libc::getuid() } != 0 {
         eprintln!("please run this script with root.");
-        eprintln!("etc: sudo ./your_program");
-        exit(1);
-    }
-}
-*/
-
-// Function to run a command and handle errors
-fn run_command(command: &PathBuf, args: &[&str]) {
-    let status = Command::new(command)
-        .args(args)
-        .status()
-        .expect("Failed to execute command");
-
-    if !status.success() {
-        eprintln!("Command {:?} failed with status: {:?}", args, status);
+        eprintln!("etc: sudo ./rk_flash");
         exit(1);
     }
 }
