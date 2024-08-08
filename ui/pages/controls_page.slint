@@ -1,13 +1,15 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import { VerticalBox, GroupBox, TextEdit ,LineEdit,HorizontalBox,ComboBox,StandardButton,Button,CheckBox} from "std-widgets.slint";
+import { VerticalBox, GroupBox, TextEdit ,LineEdit,HorizontalBox,ComboBox,StandardButton,Button,CheckBox,ListView } from "std-widgets.slint";
 import { TestSettings } from "../test_settings.slint";
 import { Page } from "page.slint";
 
 struct device_info {
     checked: bool,
-    description: string
+    dev_no: string,
+    mode: string,
+    serial_no: string,
 }
 
 struct flash_info {
@@ -40,7 +42,6 @@ export component ControlsPage inherits Page {
     VerticalBox {//纵向容器
         alignment: start;
 
-
         HorizontalBox { //横向容器
             GroupBox {
                 title: @tr("board type");
@@ -51,7 +52,7 @@ export component ControlsPage inherits Page {
                     current-value: ControlsPageAdapter.flash.board-type;
                     selected => {
                         ControlsPageAdapter.flash.board-type = self.current-value;
-                        save.enabled = true;
+                        refresh.enabled = true;
                     }
                 }
             }
@@ -65,24 +66,26 @@ export component ControlsPage inherits Page {
                     current-value: ControlsPageAdapter.flash.version_selected;
                     selected => {
                         ControlsPageAdapter.flash.version_selected = self.current-value;
-                        save.enabled = true;
+                        refresh.enabled = true;
                     }
                 }
             }
         }
 
+
         HorizontalBox { //横向容器
             vertical-stretch: 1;
             alignment: space-between;
 
-            save := StandardButton{
-                kind:apply;
-                //enabled: TestSettings.widgets-enabled;
+            refresh := Button{
+                //checkable: true;
+                enabled: TestSettings.widgets-enabled;
+                text: @tr("Refresh");
                 clicked() => {
                     ControlsPageAdapter.flash.board-type = board-type.current-value;
                     ControlsPageAdapter.flash.version-selected = version.current-value;
                     ControlsPageAdapter.flash_apply(ControlsPageAdapter.flash);
-                    self.enabled = false;
+                    //self.enabled = false;
                 }
             }
 
@@ -100,20 +103,54 @@ export component ControlsPage inherits Page {
             }
         }
 
+        HorizontalBox {
+            //vertical-stretch: 1;
+            //padding: 10px;
+            padding-right: 10px;
+            alignment: space-around;
+            visible :ControlsPageAdapter.flash.devices.length != 0;
+            GroupBox {
+                title: @tr("dev_no");
+                vertical-stretch: 0;
+            }
+            GroupBox {
+                title: @tr("mode");
+                vertical-stretch: 0;
+            }
+            GroupBox {
+                title: @tr("serial_no");
+                vertical-stretch: 0;
+            }
+            
+            }
+        }
+
         VerticalLayout {
-            for device in ControlsPageAdapter.flash.devices: 
-                HorizontalLayout {
-                    CheckBox {
-                        checked: device.checked;
-                        toggled => {
-                            device.checked = self.checked;
+            alignment: start;
+
+                for device in ControlsPageAdapter.flash.devices: HorizontalBox {
+                        CheckBox {
+                            checked: device.checked;
+                            toggled => {
+                                device.checked = self.checked;
+                            }
                         }
+
+                    Text {
+                        font-size: 12px;
+                        text: device.dev_no;
                     }
                     Text {
-                        text: device.description;
+                        font-size: 12px;
+                        text: device.mode;
+                    }
+                    Text {
+                        font-size: 12px;
+                        text: device.serial_no;
+                    }
+                    
                 }
-                
-            }
+            
         }
 
         Text {
@@ -123,6 +160,6 @@ export component ControlsPage inherits Page {
         }
 
 
-    }
+    
 }
 

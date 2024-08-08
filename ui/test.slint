@@ -9,6 +9,10 @@ import { SideBar } from "side_bar.slint";
 export { FunctionsPageAdapter,ControlsPageAdapter }
 
 component App inherits Window {
+
+    in-out property <string> test;
+
+
     preferred-width: 700px;
     preferred-height: 500px;
     title: @tr("rk flash tool");
