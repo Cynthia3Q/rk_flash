@@ -1,17 +1,67 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import { AboutSlint } from "std-widgets.slint";
+import { AboutSlint, HorizontalBox } from "std-widgets.slint";
 import { TestSettings } from "../test_settings.slint";
 import { Page } from "page.slint";
 
 export component AboutPage inherits Page {
     title: @tr("About");
     show-enable-switch: false;
-    description: @tr("Are you curious now? Check out the docs and getting starteds from the Github repository and the website https://slint.dev and try it yourself.");
+    alignment: start;
+    //alignment: space-between;
+    //description: @tr("Are you curious now? Check out the docs and getting starteds from the Github repository and the website https://slint.dev and try it yourself.");
 
-    AboutSlint { }
+    VerticalLayout {
+        spacing: 15px;
+        padding: 10px;
+        alignment: start;
+           
+        Text {
+            font-size: 20px;
+            text: "DCI DEVICES FLASH TOOL";
+            font-weight: 700;
+            horizontal-alignment: center;
+        }
 
-    // Spacer
-    Rectangle { }
+        Text {
+            font-size: 15px;
+            text: "Software Version: 1.0.0";
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+    
+        HorizontalBox {
+
+            Text {
+                text: "For support, please contact to:";
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: "zhaozhao@tensint";
+                
+                //horizontal-alignment: center;
+                font-size: 16px;
+                color: #007bff;
+            }
+    }
+
+    }
+        // Spacer
+        Rectangle {
+            height: 1px;
+            background: #CCC;
+        }
+
+        Rectangle {
+            height: 170px;
+            AboutSlint { }
+        }
+
+        Rectangle { 
+            height: 50px; 
+        }
+
+    
 }

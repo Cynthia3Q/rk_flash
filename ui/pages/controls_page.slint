@@ -8,11 +8,14 @@ import { Page } from "page.slint";
 struct device_info {
     checked: bool,
     dev_no: string,
+    loc_id:string,
     mode: string,
     serial_no: string,
+    progress:string
 }
 
 struct flash_info {
+    supported_board:[string],
     board_type: string,
     version_list: [string],
     version_selected:string,
@@ -21,15 +24,25 @@ struct flash_info {
 
 
 export global ControlsPageAdapter {
+
     in-out property <flash_info> flash : {
-        board_type :"dc11p626",
-        version_list:[ "Select version",],
+        supported_board:[],
+        board_type :"",
+        version_list:[],
         version_selected:"",
         devices:[],
     };
     
+
     callback flash_apply(flash_info);
     callback flash_start();
+    callback flash_force_stop();
+
+    callback  update_device_list([device_info]);
+    update_device_list(list) => {
+        flash.devices = list;
+    }    
+
     pure public function get_connect()-> flash_info {
         self.flash
       }
@@ -47,12 +60,12 @@ export component ControlsPage inherits Page {
                 title: @tr("board type");
 
                 board-type := ComboBox {
-                    model: [@tr("Select board"), @tr("dc11p626")];
+                    model: ControlsPageAdapter.flash.supported_board;
                     enabled: TestSettings.widgets-enabled;
                     current-value: ControlsPageAdapter.flash.board-type;
                     selected => {
                         ControlsPageAdapter.flash.board-type = self.current-value;
-                        refresh.enabled = true;
+                        start_button.enabled = true;
                     }
                 }
             }
@@ -66,7 +79,7 @@ export component ControlsPage inherits Page {
                     current-value: ControlsPageAdapter.flash.version_selected;
                     selected => {
                         ControlsPageAdapter.flash.version_selected = self.current-value;
-                        refresh.enabled = true;
+                        start_button.enabled = true;
                     }
                 }
             }
@@ -75,12 +88,13 @@ export component ControlsPage inherits Page {
 
         HorizontalBox { //横向容器
             vertical-stretch: 1;
-            alignment: space-between;
+            alignment: end;
 
             refresh := Button{
                 //checkable: true;
                 enabled: TestSettings.widgets-enabled;
                 text: @tr("Refresh");
+                visible: false;
                 clicked() => {
                     ControlsPageAdapter.flash.board-type = board-type.current-value;
                     ControlsPageAdapter.flash.version-selected = version.current-value;
@@ -91,13 +105,21 @@ export component ControlsPage inherits Page {
 
             start_button := Button {
                 checkable: true;
-                enabled: ControlsPageAdapter.flash.devices.length > 0;
+                enabled: (ControlsPageAdapter.flash.devices.length > 0) && ((ControlsPageAdapter.flash.board-type!=0) && (ControlsPageAdapter.flash.version_selected !=0));
                 text: !self.checked ? @tr("Start") : @tr("Stop");
-                //enabled: TestSettings.widgets-enabled;
+                
+                //enabled: TestSettings.widgets-enabled && ControlsPageAdapter.flash.devices.length >= 0;
                 clicked => {
                     if (self.checked)
                     {
+                        refresh.clicked();
                         ControlsPageAdapter.flash_start();
+                        TestSettings.widgets-enabled = false;
+                    }
+                    else
+                    {
+                        ControlsPageAdapter.flash_force_stop();
+                        TestSettings.widgets-enabled = true;
                     }
                 }
             }
@@ -105,29 +127,115 @@ export component ControlsPage inherits Page {
 
         HorizontalBox {
             //vertical-stretch: 1;
-            //padding: 10px;
+            padding: 10px;
             padding-right: 10px;
-            alignment: space-around;
+            alignment: space-between;
             visible :ControlsPageAdapter.flash.devices.length != 0;
-            GroupBox {
-                title: @tr("dev_no");
+            VerticalBox {
+                //title: @tr("dev_no");
                 vertical-stretch: 0;
+
+                Text {
+                    font-size: 12px;
+                    text: @tr("DevNo");
+                    font-weight: 600;
+                    //horizontal-alignment: ;
+                }
+                
+                for device in ControlsPageAdapter.flash.devices:HorizontalLayout{
+                    alignment: start;
+                    CheckBox {
+                        height: 12px;
+                        checked: device.checked;
+                        enabled: TestSettings.widgets-enabled;
+                        toggled => {
+                            device.checked = self.checked;
+                        }
+                    }
+
+                    Text {
+                        font-size: 12px;
+                        text: device.dev_no;
+                    }
+                }
+                
             }
-            GroupBox {
-                title: @tr("mode");
+            VerticalBox {
+                //title: @tr("mode");
                 vertical-stretch: 0;
+                Text {
+                    font-size: 12px;
+                    text: @tr("DevID");
+                    font-weight: 600;
+                    //horizontal-alignment: ;
+                }
+                for device in ControlsPageAdapter.flash.devices :
+                    Text {
+                        //color: red;
+                        font-size: 12px;
+                        text: device.loc_id;
+                        vertical-alignment: center;
+                    }
+                
             }
-            GroupBox {
-                title: @tr("serial_no");
+
+            VerticalBox {
+                //title: @tr("mode");
                 vertical-stretch: 0;
+                Text {
+                    font-size: 12px;
+                    text: @tr("Mode");
+                    font-weight: 600;
+                    //horizontal-alignment: ;
+                }
+                for device in ControlsPageAdapter.flash.devices :
+                    Text {
+                        color: red;
+                        font-size: 12px;
+                        text: device.mode;
+                    }
+                
+            }
+            VerticalBox {
+                //title: @tr("serial_no");
+                Text {
+                    font-size: 12px;
+                    text: @tr("SerialNo");
+                    font-weight: 600;
+                    //horizontal-alignment: ;
+                }
+                vertical-stretch: 0;
+                for device in ControlsPageAdapter.flash.devices:
+                    Text {
+                        font-size: 12px;
+                        text: device.serial_no;
+                    }  
+                
             }
             
+            VerticalBox {
+                //title: @tr("serial_no");
+                Text {
+                    font-size: 12px;
+                    text: @tr("Progress");
+                    font-weight: 600;
+                    //horizontal-alignment: ;
+                }
+                vertical-stretch: 0;
+                for device in ControlsPageAdapter.flash.devices:
+                    Text {
+                        font-size: 12px;
+                        text: device.progress;
+                    }  
+                
             }
+            
         }
-
+        /*
         VerticalLayout {
             alignment: start;
-
+            ListView {
+                
                 for device in ControlsPageAdapter.flash.devices: HorizontalBox {
                         CheckBox {
                             checked: device.checked;
@@ -150,16 +258,21 @@ export component ControlsPage inherits Page {
                     }
                     
                 }
+                    
+            }
             
         }
-
+        */
         Text {
             text: "No devices connected";
             color: red;
+            font-size: 15px;
+            font-weight: 600;
+            horizontal-alignment: center;
             visible: ControlsPageAdapter.flash.devices.length == 0;
         }
 
 
-    
+    }
 }
 

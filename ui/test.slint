@@ -8,10 +8,9 @@ import { SideBar } from "side_bar.slint";
 
 export { FunctionsPageAdapter,ControlsPageAdapter }
 
-component App inherits Window {
+export component MainWindow inherits Window {
 
     in-out property <string> test;
-
 
     preferred-width: 700px;
     preferred-height: 500px;
@@ -20,15 +19,16 @@ component App inherits Window {
 
     HorizontalLayout {
         side-bar := SideBar {
-            title: @tr("BOARD TEST MENU");
-            model: [@tr("Menu" => "Controls"), @tr("Menu" => "Board"), @tr("Menu" => "Functions"), @tr("Menu" => "Other"), @tr("Menu" => "Settings"), @tr("Menu" => "About")];
+            title: @tr("DEV FLASH MENU");
+            //model: [@tr("Menu" => "Controls"), @tr("Menu" => "Board"), @tr("Menu" => "Functions"), @tr("Menu" => "Other"), @tr("Menu" => "Settings"), @tr("Menu" => "About")];
+            model: [@tr("Menu" => "Controls"), @tr("Menu" => "Demo"), @tr("Menu" => "Settings"), @tr("Menu" => "About")];
         }
 
         if(side-bar.current-item == 0) : ControlsPage {}
-        if(side-bar.current-item == 1) : BoardPage {}
-        if(side-bar.current-item == 2) : FunctionsPage {}
-        if(side-bar.current-item == 3) : OtherPage {}
-        if(side-bar.current-item == 4) : SettingsPage {}
-        if(side-bar.current-item == 5) : AboutPage {}
+        //if(side-bar.current-item == 1) : BoardPage {}
+        if(side-bar.current-item == 1) : FunctionsPage {}
+        //if(side-bar.current-item == 3) : OtherPage {}
+        if(side-bar.current-item == 2) : SettingsPage {}
+        if(side-bar.current-item == 3) : AboutPage {}
     }
 }

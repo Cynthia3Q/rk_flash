@@ -1,4 +1,5 @@
 use flate2::read::GzDecoder;
+use log::{debug, error, info, warn};
 use slint::{Model, StandardListViewItem, VecModel};
 use std::env;
 use std::fs;
@@ -11,18 +12,15 @@ use std::process::{exit, Command};
 use std::{ops::ControlFlow, rc::Rc};
 use tar::Archive;
 use walkdir::WalkDir;
-
 pub fn prepare_filesystem(
     version: &str,
     board_type: &str,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    // 创建临时文件夹
-
     let update_rootfs_img = PathBuf::from(format!("tmp/rootfs-{}.img", version));
 
     // 如果目标文件已经存在，直接返回
     if update_rootfs_img.exists() {
-        println!(
+        info!(
             "File {} already exists, skipping creation.",
             update_rootfs_img.display()
         );
